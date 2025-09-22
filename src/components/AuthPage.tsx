@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Scissors, Mail, Lock, User, Phone } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import barbershopLogo from "@/assets/barbershop-logo.jpg";
 
 interface AuthPageProps {
@@ -14,16 +16,89 @@ interface AuthPageProps {
 
 export const AuthPage = ({ onLogin }: AuthPageProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    phone: ""
+  });
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login process
-    setTimeout(() => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo de volta!"
+        });
+        onLogin();
+      }
+    } catch (error) {
+      toast({
+        title: "Erro inesperado",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-      onLogin();
-    }, 1500);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Erro no cadastro",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Verifique seu e-mail para confirmar sua conta"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro inesperado",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,7 +138,7 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
                     <div className="relative">
@@ -73,6 +148,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="email"
                         placeholder="seu@email.com"
                         className="pl-10"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
                         required
                       />
                     </div>
@@ -86,6 +163,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="password"
                         placeholder="••••••••"
                         className="pl-10"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange("password", e.target.value)}
                         required
                       />
                     </div>
@@ -123,7 +202,7 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
                     <div className="relative">
@@ -133,6 +212,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="text"
                         placeholder="Seu nome"
                         className="pl-10"
+                        value={formData.fullName}
+                        onChange={(e) => handleInputChange("fullName", e.target.value)}
                         required
                       />
                     </div>
@@ -146,6 +227,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="tel"
                         placeholder="(11) 99999-9999"
                         className="pl-10"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
                         required
                       />
                     </div>
@@ -159,6 +242,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="email"
                         placeholder="seu@email.com"
                         className="pl-10"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
                         required
                       />
                     </div>
@@ -172,6 +257,8 @@ export const AuthPage = ({ onLogin }: AuthPageProps) => {
                         type="password"
                         placeholder="••••••••"
                         className="pl-10"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange("password", e.target.value)}
                         required
                       />
                     </div>

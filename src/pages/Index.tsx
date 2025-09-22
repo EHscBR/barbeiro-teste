@@ -1,22 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthPage } from "@/components/AuthPage";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
 import { BookingFlow } from "@/components/BookingFlow";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
 
+  useEffect(() => {
+    if (user) {
+      setCurrentPage("dashboard");
+    }
+  }, [user]);
+
   const handleLogin = () => {
-    setIsAuthenticated(true);
+    // Will be handled by auth state change
   };
 
   const handleBookingComplete = () => {
     setCurrentPage("dashboard");
   };
 
-  if (!isAuthenticated) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-barbershop-gold mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <AuthPage onLogin={handleLogin} />;
   }
 

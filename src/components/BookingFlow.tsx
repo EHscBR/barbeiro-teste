@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, MapPin, Scissors, User, Calendar, Clock, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface BookingFlowProps {
@@ -13,35 +15,76 @@ interface BookingFlowProps {
 }
 
 export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [selectedBarber, setSelectedBarber] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const { toast } = useToast();
+  
+  const [units, setUnits] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [barbers, setBarbers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchUnits();
+    fetchServices();
+  }, []);
+
+  useEffect(() => {
+    if (selectedUnit) {
+      fetchBarbers();
+    }
+  }, [selectedUnit]);
+
+  const fetchUnits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('units')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setUnits(data || []);
+    } catch (error) {
+      console.error('Error fetching units:', error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+    }
+  };
+
+  const fetchBarbers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('barbers')
+        .select('*')
+        .eq('unit_id', selectedUnit)
+        .order('name');
+
+      if (error) throw error;
+      setBarbers(data || []);
+    } catch (error) {
+      console.error('Error fetching barbers:', error);
+    }
+  };
 
   const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
-
-  const units = [
-    { id: "centro", name: "Unidade Centro", address: "Rua das Flores, 123 - Centro", available: true },
-    { id: "zona-sul", name: "Unidade Zona Sul", address: "Av. Paulista, 456 - Bela Vista", available: true },
-  ];
-
-  const services = [
-    { id: "corte", name: "Corte Simples", price: 25, duration: "30 min" },
-    { id: "barba", name: "Barba", price: 20, duration: "20 min" },
-    { id: "sobrancelha", name: "Sobrancelha", price: 15, duration: "15 min" },
-    { id: "combo-corte-barba", name: "Combo Corte + Barba", price: 40, duration: "45 min", popular: true },
-    { id: "combo-completo", name: "Combo Completo", price: 55, duration: "60 min" },
-  ];
-
-  const barbers = [
-    { id: "carlos", name: "Carlos Silva", rating: 4.8, specialties: ["Corte Clássico", "Barba"], available: true },
-    { id: "antonio", name: "Antônio Santos", rating: 4.9, specialties: ["Corte Moderno", "Degradê"], available: true },
-    { id: "rafael", name: "Rafael Costa", rating: 4.7, specialties: ["Barba", "Bigode"], available: false },
-  ];
 
   const availableDates = [
     { date: "2024-01-15", day: "Segunda", slots: 8 },
@@ -68,12 +111,39 @@ export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
     }
   };
 
-  const handleConfirm = () => {
-    toast({
-      title: "Agendamento confirmado!",
-      description: "Você receberá uma confirmação por e-mail e SMS.",
-    });
-    onComplete();
+  const handleConfirm = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          user_id: user.id,
+          unit_id: selectedUnit,
+          service_id: selectedService,
+          barber_id: selectedBarber,
+          appointment_date: selectedDate,
+          appointment_time: selectedTime,
+          status: 'scheduled'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Agendamento confirmado!",
+        description: "Seu horário foi reservado com sucesso.",
+      });
+      onComplete();
+    } catch (error) {
+      toast({
+        title: "Erro no agendamento",
+        description: "Não foi possível confirmar seu agendamento. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getSelectedService = () => services.find(s => s.id === selectedService);
@@ -140,11 +210,9 @@ export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
                           <h3 className="font-semibold">{unit.name}</h3>
                           <p className="text-sm text-muted-foreground">{unit.address}</p>
                         </div>
-                        {unit.available && (
-                          <Badge variant="outline" className="border-green-500 text-green-600">
-                            Disponível
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className="border-green-500 text-green-600">
+                          Disponível
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -177,11 +245,8 @@ export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
                         <div>
                           <div className="flex items-center space-x-2">
                             <h3 className="font-semibold">{service.name}</h3>
-                            {service.popular && (
-                              <Badge variant="secondary">Popular</Badge>
-                            )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{service.duration}</p>
+                          <p className="text-sm text-muted-foreground">{service.duration_minutes} min</p>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-barbershop-gold">R$ {service.price}</p>
@@ -210,22 +275,22 @@ export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
                     key={barber.id}
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       selectedBarber === barber.id ? 'ring-2 ring-barbershop-gold bg-secondary/50' : ''
-                    } ${!barber.available ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => barber.available && setSelectedBarber(barber.id)}
+                    }`}
+                    onClick={() => setSelectedBarber(barber.id)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="font-semibold">{barber.name}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {barber.specialties.join(", ")}
+                            {barber.specialty}
                           </p>
                           <div className="flex items-center space-x-1 mt-1">
-                            <span className="text-sm">⭐ {barber.rating}</span>
+                            <span className="text-sm">⭐ {barber.rating || '5.0'}</span>
                           </div>
                         </div>
-                        <Badge variant={barber.available ? "outline" : "secondary"}>
-                          {barber.available ? "Disponível" : "Ocupado"}
+                        <Badge variant="outline">
+                          Disponível
                         </Badge>
                       </div>
                     </CardContent>
@@ -354,8 +419,9 @@ export const BookingFlow = ({ onComplete, onBack }: BookingFlowProps) => {
             <Button 
               variant="hero" 
               onClick={handleConfirm}
+              disabled={loading}
             >
-              Confirmar Agendamento
+              {loading ? "Confirmando..." : "Confirmar Agendamento"}
               <CheckCircle className="h-4 w-4 ml-2" />
             </Button>
           )}
