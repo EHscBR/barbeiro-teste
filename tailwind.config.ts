@@ -57,6 +57,27 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        /* Barbershop Theme Colors */
+        barbershop: {
+          gold: "hsl(var(--barbershop-gold))",
+          "gold-light": "hsl(var(--barbershop-gold-light))",
+          charcoal: "hsl(var(--barbershop-charcoal))",
+          "charcoal-light": "hsl(var(--barbershop-charcoal-light))",
+          red: "hsl(var(--barbershop-red))",
+          "red-light": "hsl(var(--barbershop-red-light))",
+        },
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-gold": "var(--gradient-gold)",
+        "gradient-hero": "var(--gradient-hero)",
+      },
+      boxShadow: {
+        elegant: "var(--shadow-elegant)",
+        gold: "var(--shadow-gold)",
+      },
+      transitionTimingFunction: {
+        smooth: "var(--transition-smooth)",
       },
       borderRadius: {
         lg: "var(--radius)",
